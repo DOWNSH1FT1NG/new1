@@ -312,63 +312,68 @@ void MainContentComponent::deletePianoRoll(int currentRegionNumber_)
     createNoteRegionCounter --;
 }
 
-void MainContentComponent::counterChanged (int counterValue_)
+void MainContentComponent::counterChanged(int counterValue_)
 {
     std::cout << counterValue_ << std::endl;
     currentCounterValue = counterValue_;
-    
-    // if the counter is as long as the furthest away piano roll the whole sequence resets
-    
+
     resetCounter();
-    
-    if (pianoRolls.size() >= 1)
+
+    if (pianoRolls.size() >= 1 &&
+        regionCounter >= 0 &&
+        regionCounter < arrangeWindow.regionData.size())
     {
-        // if the sequence region at the smallest position the counter starts from the beggining
-        
-        if (arrangeWindow.regionData[regionCounter] -> xPosition == 160)
+        auto* region = arrangeWindow.regionData[regionCounter];
+        if (region != nullptr)
         {
-            incrementValue = 0;
-        }
-        
-        // sets the increment value based off the Xposition of the sequence region
-        
-        else
-        {
-            incrementValue = (((arrangeWindow.regionData[regionCounter] -> xPosition - 160 )) / 80) * 16;
-        }
-        
-        // checks to see which oscillators need turning off
-        
-        audio.stopNote();
-        
-        // Looks through the piano roll to see if there are notes at the counters current position
-        
-        pianoRolls[regionCounter] -> startOscillators(counterValue_ - incrementValue);
-        
-        // check to see if theres a note the same position
-        
-        if (regionCounter < arrangeWindow.regionData.size() - 1)
-        {
-            for (int count = 1; count < arrangeWindow.regionData.size() - regionCounter ; count ++)
+            if (region->xPosition == 160)
             {
-                if(arrangeWindow.regionData[regionCounter] -> xPosition == arrangeWindow.regionData[regionCounter +count] -> xPosition)
+                incrementValue = 0;
+            }
+            else
+            {
+                incrementValue = ((region->xPosition - 160) / 80) * 16;
+            }
+
+            audio.stopNote();
+
+            if (regionCounter < pianoRolls.size() && pianoRolls[regionCounter] != nullptr)
+            {
+                pianoRolls[regionCounter]->startOscillators(counterValue_ - incrementValue);
+            }
+
+            if (regionCounter < arrangeWindow.regionData.size() - 1)
+            {
+                for (int count = 1; count < arrangeWindow.regionData.size() - regionCounter; ++count)
                 {
-                    incrementValue = (((arrangeWindow.regionData[regionCounter + count] -> xPosition - 160 )) / 80) * 16;
-                    pianoRolls[regionCounter + count] -> startOscillators(counterValue_ - incrementValue);
+                    auto* nextRegion = arrangeWindow.regionData[regionCounter + count];
+                    if (nextRegion != nullptr && nextRegion->xPosition == region->xPosition)
+                    {
+                        incrementValue = ((nextRegion->xPosition - 160) / 80) * 16;
+
+                        if (regionCounter + count < pianoRolls.size() && pianoRolls[regionCounter + count] != nullptr)
+                        {
+                            pianoRolls[regionCounter + count]->startOscillators(counterValue_ - incrementValue);
+                        }
+                    }
+                }
+
+                // Обрабатываем следующую по счёту regionData
+                auto* regionNext = arrangeWindow.regionData[regionCounter + 1];
+                if (regionNext != nullptr)
+                {
+                    incrementValue = ((regionNext->xPosition - 160) / 80) * 16;
+
+                    if (regionCounter + 1 < pianoRolls.size() && pianoRolls[regionCounter + 1] != nullptr)
+                    {
+                        pianoRolls[regionCounter + 1]->startOscillators(counterValue_ - incrementValue);
+                    }
                 }
             }
-            
-            
-            // if the region before it is still playing when it should be triggered
-            
-            incrementValue = (((arrangeWindow.regionData[regionCounter + 1] -> xPosition - 160 )) / 80) * 16;
-            pianoRolls[regionCounter + 1] -> startOscillators(counterValue_ - incrementValue);
-            
         }
-        
     }
-    
 }
+
 
 void MainContentComponent::incrementRegionCounter(int counterValue_) // pass in the counter , if its higher than the highest one
 {
